@@ -1,0 +1,64 @@
+table dim_merchant
+	lineageTag: 4d3fbaeb-367f-4c15-af45-b3180e725471
+
+	column MerchantKey
+		dataType: int64
+		isHidden
+		lineageTag: 70cc1fc8-3066-4b55-94e4-a3cd32ce83e5
+		summarizeBy: none
+		sourceColumn: MerchantKey
+
+	column MerchantID
+		dataType: string
+		lineageTag: 86fbe421-2ea6-439c-9c76-85bb9641ff32
+		summarizeBy: none
+		sourceColumn: MerchantID
+
+	column MerchantName
+		dataType: string
+		lineageTag: e8e1247f-9241-4644-ac36-090c5b59c144
+		summarizeBy: none
+		sourceColumn: MerchantName
+
+	column Category
+		dataType: string
+		lineageTag: 351bb0da-416f-4077-abcb-dd784b5e8e88
+		summarizeBy: none
+		sourceColumn: Category
+
+	column CountryCode
+		dataType: string
+		lineageTag: 604a87b9-9c9a-480c-b5d2-3bc7f3947ca3
+		summarizeBy: none
+		sourceColumn: CountryCode
+
+	column Region
+		dataType: string
+		lineageTag: f8e5ae6f-3117-4e26-aaed-9bfb65b3f06d
+		summarizeBy: none
+		sourceColumn: Region
+
+	column Tier
+		dataType: string
+		lineageTag: a3d632d3-6ee3-4181-a9a3-a74217ef1c9a
+		summarizeBy: none
+		sourceColumn: Tier
+
+	column AccountManagerEmail
+		dataType: string
+		lineageTag: 61ee954a-2bcb-47a9-a280-66074adcbeca
+		summarizeBy: none
+		sourceColumn: AccountManagerEmail
+
+	partition dim_merchant = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "dim_merchant.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    BlankToNull = Table.TransformColumns(Promoted, {}, each if _ = "" then null else _),
+				    Typed = Table.TransformColumnTypes(BlankToNull, {{"MerchantKey", Int64.Type}, {"MerchantID", type text}, {"MerchantName", type text}, {"Category", type text}, {"CountryCode", type text}, {"Region", type text}, {"Tier", type text}, {"AccountManagerEmail", type text}}, "en-US"),
+				    Final = Typed
+				in
+				    Final
+

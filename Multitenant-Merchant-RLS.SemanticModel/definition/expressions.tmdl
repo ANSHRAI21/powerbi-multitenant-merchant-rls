@@ -1,0 +1,5 @@
+expression DataFolder = "C:\Users\Anshrai\Documents\Marbill-PowerBI-Portfolio\03-multitenant-merchant-rls\data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 14778c9c-6ee3-492b-860d-86ea4b184ecc
+
+	annotation PBI_ResultType = Text
+

@@ -1,0 +1,16 @@
+role 'Dynamic Tenant'
+	modelPermission: read
+
+	tablePermission dim_merchant =
+			VAR _user = USERPRINCIPALNAME ()
+			VAR _rows = FILTER ( security_user_access, security_user_access[UserEmail] = _user )
+			VAR _isExec = NOT ISEMPTY ( FILTER ( _rows, security_user_access[Role] = "Executive" ) )
+			VAR _regions = SELECTCOLUMNS ( FILTER ( _rows, security_user_access[Role] = "AccountManager" ), "r", security_user_access[Region] )
+			VAR _merchants = SELECTCOLUMNS ( FILTER ( _rows, security_user_access[Role] = "MerchantOwner" ), "m", security_user_access[MerchantID] )
+			RETURN
+			    _isExec || dim_merchant[Region] IN _regions || dim_merchant[MerchantID] IN _merchants
+
+	tablePermission security_user_access = [UserEmail] = USERPRINCIPALNAME ()
+
+	annotation PBI_Id = 32b45724375f42a1abe3f621b9386c4f
+

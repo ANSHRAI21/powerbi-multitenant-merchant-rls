@@ -1,0 +1,72 @@
+table _Measures
+	lineageTag: b5822c09-22bd-40f5-b110-37a45bd55b0f
+
+	measure 'Current User' = USERPRINCIPALNAME ()
+		lineageTag: 2a95083a-238b-4131-b098-e80a3348e1d2
+
+	measure 'Viewer Role' =
+			COALESCE (
+			    LOOKUPVALUE ( security_user_access[Role], security_user_access[UserEmail], [Current User] ),
+			    "No access"
+			)
+		lineageTag: 659dc790-0fb8-46d5-9f05-8beb588e9190
+
+	measure 'Visible Merchants' = DISTINCTCOUNT ( dim_merchant[MerchantKey] )
+		formatString: #,0
+		lineageTag: f27478c7-ba45-4949-8442-34398b5f114d
+
+	measure GMV = SUM ( fact_orders[GrossAmountEUR] )
+		formatString: €#,0,.0"K"
+		lineageTag: 8c0f8e89-228a-4656-b005-a25cbf717f6e
+
+	measure 'Net Revenue' =
+			CALCULATE (
+			    SUM ( fact_orders[GrossAmountEUR] ) - SUM ( fact_orders[DiscountEUR] ) - SUM ( fact_orders[RefundEUR] ),
+			    fact_orders[Status] <> "Cancelled"
+			)
+		formatString: €#,0,.0"K"
+		lineageTag: 92a12950-6d8c-4a12-a340-2c434693eaaa
+
+	measure Orders = DISTINCTCOUNT ( fact_orders[OrderID] )
+		formatString: #,0
+		lineageTag: 5835c0f3-8fad-4ba7-92cf-341a56e59ca7
+
+	measure AOV = DIVIDE ( [Net Revenue], [Orders] )
+		formatString: €#,0.00
+		lineageTag: e552619c-6056-4f05-93fd-3ba524a92eb9
+
+	measure 'Refund Rate %' = DIVIDE ( SUM ( fact_orders[RefundEUR] ), [GMV] )
+		formatString: 0.0%
+		lineageTag: decbc2e1-3d7a-42db-8c31-e08b1a441182
+
+	measure 'Platform Fee Revenue' = SUM ( fact_orders[PaymentFeeEUR] )
+		formatString: €#,0,.0"K"
+		lineageTag: 9dcf2e44-b6e7-41b4-b1d6-33d181af3c69
+
+	measure 'Category Benchmark AOV' =
+			LOOKUPVALUE (
+			    agg_category_benchmark[BenchmarkAOV],
+			    agg_category_benchmark[Category], SELECTEDVALUE ( dim_merchant[Category] )
+			)
+		formatString: €#,0.00
+		lineageTag: 334fe88e-1a8c-47c0-8650-a31dae8fd623
+
+	measure 'AOV vs Category %' = DIVIDE ( [AOV] - [Category Benchmark AOV], [Category Benchmark AOV] )
+		formatString: 0.0%
+		lineageTag: f13fbc4b-e9de-4cc4-a86b-500be09140f8
+
+	column Placeholder
+		dataType: string
+		isHidden
+		lineageTag: e4de821a-b7dd-44f6-8853-d043c154949b
+		summarizeBy: none
+		sourceColumn: Placeholder
+
+	partition _Measures = m
+		mode: import
+		source =
+				let
+				    Source = #table(type table [Placeholder = text], {})
+				in
+				    Source
+

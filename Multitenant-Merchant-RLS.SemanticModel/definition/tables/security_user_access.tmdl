@@ -1,0 +1,40 @@
+table security_user_access
+	lineageTag: 15cbd779-7e7c-4ea2-91e2-800a8fbe2c03
+	isHidden
+
+	column UserEmail
+		dataType: string
+		lineageTag: cecabddb-0500-4569-8c1b-c69b255ff218
+		summarizeBy: none
+		sourceColumn: UserEmail
+
+	column Role
+		dataType: string
+		lineageTag: a7cd4f10-7f70-4327-9101-bce9d9629047
+		summarizeBy: none
+		sourceColumn: Role
+
+	column Region
+		dataType: string
+		lineageTag: 51cf7da9-27f2-4745-92b1-00d218ffdd29
+		summarizeBy: none
+		sourceColumn: Region
+
+	column MerchantID
+		dataType: string
+		lineageTag: 962b052d-c5c7-4ba2-ae74-d45f76811465
+		summarizeBy: none
+		sourceColumn: MerchantID
+
+	partition security_user_access = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "security_user_access.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    BlankToNull = Table.TransformColumns(Promoted, {}, each if _ = "" then null else _),
+				    Typed = Table.TransformColumnTypes(BlankToNull, {{"UserEmail", type text}, {"Role", type text}, {"Region", type text}, {"MerchantID", type text}}, "en-US"),
+				    Final = Typed
+				in
+				    Final
+

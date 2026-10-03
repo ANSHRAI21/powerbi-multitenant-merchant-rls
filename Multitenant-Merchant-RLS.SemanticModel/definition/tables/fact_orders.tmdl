@@ -1,0 +1,81 @@
+table fact_orders
+	lineageTag: 43af3e86-efc8-4635-85ce-d5b348f2f8fd
+
+	column OrderID
+		dataType: int64
+		lineageTag: 783e2eea-7546-4066-8601-27db84b365d7
+		summarizeBy: none
+		sourceColumn: OrderID
+
+	column DateKey
+		dataType: int64
+		isHidden
+		lineageTag: 656d65fe-2b87-4455-955d-6f959ecb1bc7
+		summarizeBy: none
+		sourceColumn: DateKey
+
+	column MerchantKey
+		dataType: int64
+		isHidden
+		lineageTag: f83d96dc-4a50-4277-aef9-65afea9a6eb5
+		summarizeBy: none
+		sourceColumn: MerchantKey
+
+	column CustomerID
+		dataType: string
+		lineageTag: c0bef766-fdb6-46d2-83fa-baba91fdb14b
+		summarizeBy: none
+		sourceColumn: CustomerID
+
+	column Channel
+		dataType: string
+		lineageTag: a5b526c8-2bdc-4bf1-9ab7-2900474b8ea3
+		summarizeBy: none
+		sourceColumn: Channel
+
+	column Status
+		dataType: string
+		lineageTag: 5c7e58cf-e724-4de7-bf4a-da80a9d2a668
+		summarizeBy: none
+		sourceColumn: Status
+
+	column GrossAmountEUR
+		dataType: decimal
+		formatString: €#,0.00
+		lineageTag: 0e65f484-1f44-4a72-9ff0-e1078338d1d9
+		summarizeBy: sum
+		sourceColumn: GrossAmountEUR
+
+	column DiscountEUR
+		dataType: decimal
+		formatString: €#,0.00
+		lineageTag: 293a5913-f37d-426e-a034-aebf5488d3dc
+		summarizeBy: sum
+		sourceColumn: DiscountEUR
+
+	column RefundEUR
+		dataType: decimal
+		formatString: €#,0.00
+		lineageTag: a255e3fd-c312-4350-90e9-934c9122a586
+		summarizeBy: sum
+		sourceColumn: RefundEUR
+
+	column PaymentFeeEUR
+		dataType: decimal
+		formatString: €#,0.00
+		lineageTag: 3ebd13c7-b6ed-4902-830b-f0c3c2035c3b
+		summarizeBy: sum
+		sourceColumn: PaymentFeeEUR
+
+	partition fact_orders = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "fact_orders.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    BlankToNull = Table.TransformColumns(Promoted, {}, each if _ = "" then null else _),
+				    Typed = Table.TransformColumnTypes(BlankToNull, {{"OrderID", Int64.Type}, {"DateKey", Int64.Type}, {"MerchantKey", Int64.Type}, {"CustomerID", type text}, {"Channel", type text}, {"Status", type text}, {"GrossAmountEUR", Currency.Type}, {"DiscountEUR", Currency.Type}, {"RefundEUR", Currency.Type}, {"PaymentFeeEUR", Currency.Type}}, "en-US"),
+				    Final = Typed
+				in
+				    Final
+

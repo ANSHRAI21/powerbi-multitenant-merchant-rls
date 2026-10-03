@@ -1,0 +1,18 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_QueryOrder = ["dim_date", "dim_merchant", "fact_orders", "security_user_access", "agg_category_benchmark", "_Measures"]
+
+ref table dim_date
+ref table dim_merchant
+ref table fact_orders
+ref table security_user_access
+ref table agg_category_benchmark
+ref table _Measures
+
+ref role 'Dynamic Tenant'

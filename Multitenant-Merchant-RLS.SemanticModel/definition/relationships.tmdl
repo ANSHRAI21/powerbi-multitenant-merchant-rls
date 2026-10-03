@@ -1,0 +1,8 @@
+relationship b22044fd-ad75-4550-9f44-f1eedfee68f9
+	fromColumn: fact_orders.DateKey
+	toColumn: dim_date.DateKey
+
+relationship a00be181-c0d6-4f84-a58a-5b92e5f65668
+	fromColumn: fact_orders.MerchantKey
+	toColumn: dim_merchant.MerchantKey
+

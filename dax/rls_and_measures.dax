@@ -1,0 +1,83 @@
+// ============================================================
+// Multi-Tenant Merchant Analytics — Dynamic Row-Level Security
+// One report, one dataset, every viewer sees only their tenant(s).
+//
+// Model:
+//   security_user_access[UserEmail, Role, Region, MerchantID]   (no relationship; read via LOOKUPVALUE/FILTER)
+//   dim_merchant 1 --* fact_orders
+//
+// Roles (Modeling > Manage roles):
+//   Role "Dynamic Tenant"  ->  table filter on dim_merchant (DAX below)
+// In Power BI Service: Dataset > Security > add the AAD group to "Dynamic Tenant".
+// Test in Desktop: Modeling > View as > Other user = owner.m10007@merchant-demo.com
+// ============================================================
+
+// ---------- RLS table filter expression on dim_merchant ----------
+VAR _user = USERPRINCIPALNAME ()
+VAR _rows =
+    FILTER ( security_user_access, security_user_access[UserEmail] = _user )
+VAR _isExec =
+    NOT ISEMPTY ( FILTER ( _rows, security_user_access[Role] = "Executive" ) )
+VAR _regions =
+    SELECTCOLUMNS ( FILTER ( _rows, security_user_access[Role] = "AccountManager" ), "r", security_user_access[Region] )
+VAR _merchants =
+    SELECTCOLUMNS ( FILTER ( _rows, security_user_access[Role] = "MerchantOwner" ), "m", security_user_access[MerchantID] )
+RETURN
+    _isExec
+        || dim_merchant[Region] IN _regions
+        || dim_merchant[MerchantID] IN _merchants
+
+// RLS on security_user_access itself (so a merchant can't browse the access list):
+//   [UserEmail] = USERPRINCIPALNAME ()
+
+
+// ---------- Measures (table: _Measures) ----------
+Current User = USERPRINCIPALNAME ()
+
+Viewer Role =
+COALESCE (
+    LOOKUPVALUE ( security_user_access[Role], security_user_access[UserEmail], [Current User] ),
+    "No access"
+)
+
+Visible Merchants = DISTINCTCOUNT ( dim_merchant[MerchantKey] )
+
+GMV = SUM ( fact_orders[GrossAmountEUR] )
+
+Net Revenue =
+CALCULATE (
+    SUM ( fact_orders[GrossAmountEUR] ) - SUM ( fact_orders[DiscountEUR] ) - SUM ( fact_orders[RefundEUR] ),
+    fact_orders[Status] <> "Cancelled"
+)
+
+Orders = DISTINCTCOUNT ( fact_orders[OrderID] )
+
+AOV = DIVIDE ( [Net Revenue], [Orders] )
+
+Refund Rate % = DIVIDE ( SUM ( fact_orders[RefundEUR] ), [GMV] )
+
+Platform Fee Revenue = SUM ( fact_orders[PaymentFeeEUR] )
+
+// Benchmark that respects confidentiality: a merchant sees the peer-category average,
+// never other merchants' rows. Works because REMOVEFILTERS ignores slicers, not RLS —
+// so we pre-compute it in a calculated table (agg_category_benchmark) that has NO
+// relationship to dim_merchant and therefore is not filtered by RLS.
+Category Benchmark AOV =
+LOOKUPVALUE (
+    agg_category_benchmark[BenchmarkAOV],
+    agg_category_benchmark[Category], SELECTEDVALUE ( dim_merchant[Category] )
+)
+
+AOV vs Category % = DIVIDE ( [AOV] - [Category Benchmark AOV], [Category Benchmark AOV] )
+
+// ---------- Calculated table: agg_category_benchmark ----------
+// agg_category_benchmark =
+// SUMMARIZECOLUMNS (
+//     dim_merchant[Category],
+//     "BenchmarkAOV", DIVIDE (
+//         CALCULATE ( SUM ( fact_orders[GrossAmountEUR] ) - SUM ( fact_orders[DiscountEUR] ) - SUM ( fact_orders[RefundEUR] ),
+//                     fact_orders[Status] <> "Cancelled" ),
+//         CALCULATE ( DISTINCTCOUNT ( fact_orders[OrderID] ), fact_orders[Status] <> "Cancelled" ) )
+// )
+// NOTE: calculated tables are evaluated at refresh time without RLS, so the benchmark
+// is the true platform-wide category average — and exposes only an aggregate.

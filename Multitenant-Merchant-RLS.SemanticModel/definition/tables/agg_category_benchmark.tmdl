@@ -1,0 +1,42 @@
+table agg_category_benchmark
+	lineageTag: 044b1caf-d6b5-4b4c-a54d-cbc5b05de25e
+	isHidden
+
+	column Category
+		dataType: string
+		lineageTag: 33311ba8-1d7a-4b46-b164-6f0a183bfba9
+		summarizeBy: none
+		sourceColumn: Category
+
+	column NetRevenue
+		dataType: double
+		lineageTag: 6e170d24-b59c-42de-870e-65b4afcc76c0
+		summarizeBy: sum
+		sourceColumn: NetRevenue
+
+	column Orders
+		dataType: int64
+		lineageTag: e56038ae-3673-4ac1-bdd2-598d514f3eb8
+		summarizeBy: none
+		sourceColumn: Orders
+
+	column BenchmarkAOV
+		dataType: double
+		lineageTag: 4d883b26-87a0-4dee-a05e-7f0fad3406ab
+		summarizeBy: sum
+		sourceColumn: BenchmarkAOV
+
+	partition agg_category_benchmark = m
+		mode: import
+		source =
+				let
+				    Orders = Table.SelectRows(fact_orders, each [Status] <> "Cancelled"),
+				    Joined = Table.NestedJoin(Orders, {"MerchantKey"}, dim_merchant, {"MerchantKey"}, "m", JoinKind.Inner),
+				    Cat = Table.ExpandTableColumn(Joined, "m", {"Category"}),
+				    Grouped = Table.Group(Cat, {"Category"}, {
+				        {"NetRevenue", each List.Sum([GrossAmountEUR]) - List.Sum([DiscountEUR]) - List.Sum([RefundEUR]), type number},
+				        {"Orders", each Table.RowCount(_), Int64.Type}}),
+				    Final = Table.AddColumn(Grouped, "BenchmarkAOV", each [NetRevenue] / [Orders], type number)
+				in
+				    Final
+
